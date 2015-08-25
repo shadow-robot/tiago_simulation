@@ -76,34 +76,36 @@ namespace tiago_hardware_gazebo
     std::vector<std::string> jnt_names;
     for (size_t i = 0; i < sim_joints_tmp.size(); ++i)
     {
-
-      // NOTE: This loop has a bunch of tricks that will get removed once automatic transmission parsing is implemented
-      const std::string unscoped_name = sim_joints_tmp[i]->GetName();//.substr(7); // NOTE: Removing extra scoping, TODO: Fix!
-      if ( !(unscoped_name.size() >= 6 && 0 == unscoped_name.compare(0, 6, "caster")) )
+      if (sim_joints_tmp[i]->GetName().substr(0, 3) != "rh_")  // To filter out the shadow hand joints
       {
-        if(0 == unscoped_name.compare(0, 5, "wheel"))
+        // NOTE: This loop has a bunch of tricks that will get removed once automatic transmission parsing is implemented
+        const std::string unscoped_name = sim_joints_tmp[i]->GetName();//.substr(7); // NOTE: Removing extra scoping, TODO: Fix!
+        if ( !(unscoped_name.size() >= 6 && 0 == unscoped_name.compare(0, 6, "caster")) )
         {
-          boost::shared_ptr<const urdf::Joint> joint(urdf_model->getJoint(unscoped_name));
-          if(!joint)
+          if(0 == unscoped_name.compare(0, 5, "wheel"))
           {
-            ROS_ERROR_STREAM(unscoped_name
-                             << " couldn't be retrieved from model description");
-            return false;
+            boost::shared_ptr<const urdf::Joint> joint(urdf_model->getJoint(unscoped_name));
+            if(!joint)
+            {
+              ROS_ERROR_STREAM(unscoped_name
+                               << " couldn't be retrieved from model description");
+              return false;
+            }
+
+            sim_joints_tmp[i]->SetMaxForce(0u, joint->limits->effort);
+            vel_sim_joints_.push_back(sim_joints_tmp[i]);
+            vel_jnt_names.push_back(unscoped_name);
           }
+          else
+          {
+            pos_sim_joints_.push_back(sim_joints_tmp[i]);
+            pos_jnt_names.push_back(unscoped_name);
+          }
+        }
 
-          sim_joints_tmp[i]->SetMaxForce(0u, joint->limits->effort);
-          vel_sim_joints_.push_back(sim_joints_tmp[i]);
-          vel_jnt_names.push_back(unscoped_name);
-        }
-        else
-        {
-          pos_sim_joints_.push_back(sim_joints_tmp[i]);
-          pos_jnt_names.push_back(unscoped_name);
-        }
+        sim_joints_.push_back(sim_joints_tmp[i]);
+        jnt_names.push_back(unscoped_name);
       }
-
-      sim_joints_.push_back(sim_joints_tmp[i]);
-      jnt_names.push_back(unscoped_name);
     }
 
     pos_n_dof_ = pos_sim_joints_.size();
